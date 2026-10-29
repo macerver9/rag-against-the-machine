@@ -21,13 +21,44 @@ def split_markdown_sections(content: str) -> list[str]:
     return [section for section in sections if sections]
 
 
-def split_section_into_chunks(content: str, char_limit: int = 2000) -> list[str]:
+def split_long_paragraph(para: str, char_limit: int) -> list[str]:
+    """Split a long paragraph into a sections with a max limit of characters"""
+
+    chunks: list[str] = []
+
+    for i in range(0, len(para), char_limit):
+        chunks.append(para[i:i + char_limit])
+
+    return chunks
+
+
+def split_section_into_chunks(
+        content: str,
+        char_limit: int = 2000) -> list[str]:
     """Split a section into a chunk with a max limit of characters"""
 
     chunks: list[str] = []
     current_chunk: str = ""
 
     for para in content.split("\n\n"):
-        if (len(current_chunk) < char_limit and
-            (char_limit - len(current_chunk) > len(para))):
-            current_chunk.append(para)
+        if len(para) > char_limit:
+            if current_chunk:
+                chunks.append(current_chunk)
+            current_chunk = ""
+            chunks.extend(split_long_paragraph(para, char_limit))
+
+        elif not current_chunk and len(para) <= char_limit:
+            current_chunk = para
+
+        elif len(current_chunk) + len(para) + len("\n\n") <= char_limit:
+            current_chunk = current_chunk + "\n\n" + para
+
+        else:
+            if current_chunk:
+                chunks.append(current_chunk)
+            current_chunk = para
+
+    if current_chunk:
+        chunks.append(current_chunk)
+
+    return chunks
