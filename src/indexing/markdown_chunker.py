@@ -4,21 +4,26 @@ import re
 def split_markdown_sections(content: str) -> list[str]:
     """Split Markdown content into sections using headings."""
 
+    matches = re.finditer(r"^#{1,6}\s", content, re.MULTILINE)
+    positions = [match.start() for match in matches]
+
+    if not positions:
+        return [content] if content else []
+
     sections: list[str] = []
-    current_section: list[str] = []
 
-    for line in content.splitlines():
-        if re.match(r"^#{1,6}\s", line):
-            if current_section:
-                sections.append("\n".join(current_section).strip())
-            current_section = [line]
+    if positions[0] > 0:
+        sections.append(content[:positions[0]])
+
+    for i, start in enumerate(positions):
+        if i + 1 < len(positions):
+            end = positions[i + 1]
         else:
-            current_section.append(line)
+            end = len(content)
 
-    if current_section:
-        sections.append("\n".join(current_section).strip())
+        sections.append(content[start:end])
 
-    return [section for section in sections if sections]
+    return sections
 
 
 def split_long_paragraph(para: str, char_limit: int) -> list[str]:
@@ -60,5 +65,18 @@ def split_section_into_chunks(
 
     if current_chunk:
         chunks.append(current_chunk)
+
+    return chunks
+
+
+def chunk_markdown(content: str, char_limit: int = 2000) -> list[str]:
+    """Split Markdown content into chunks."""
+
+    sections: list[str] = split_markdown_sections(content)
+    chunks: list[str] = []
+
+    for section in sections:
+        section_chunks = split_section_into_chunks(section, char_limit)
+        chunks.extend(section_chunks)
 
     return chunks
