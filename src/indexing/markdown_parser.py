@@ -9,10 +9,23 @@ def is_table_separator(line: str) -> bool:
     return bool(re.match(pattern, line))
 
 
-def is_code_fence(line: str) -> bool:
-    """Check whether a line opens a fenced code block."""
+def get_code_fence(line: str) -> str | None:
+    """Return the code fence marker if the line opens a fenced block."""
 
-    return bool(re.match(r"^\s*(`{3,}|~{3,})", line))
+    match = re.match(r"^\s*(`{3,}|~{3,})", line)
+
+    if match:
+        return match.group(1)
+
+    return None
+
+
+def is_code_fence_end(line: str, marker: str) -> bool:
+    """Check whether a line closes a fenced code block."""
+
+    pattern = rf"^\s*{re.escape(marker[0])}{{{len(marker)},}}\s*$"
+
+    return bool(re.match(pattern, line))
 
 
 def find_markdown_tables(content: str) -> list[tuple[int, int]]:
@@ -34,17 +47,20 @@ def find_markdown_tables(content: str) -> list[tuple[int, int]]:
     code_marker = ""
 
     while i < len(lines):
-        if is_code_fence(lines[i]):
-            if not in_code_block:
-                in_code_block = True
-                code_marker = lines[i].strip()[0]
-            elif lines[i].strip().startswith(code_marker * 3):
+        if in_code_block:
+            if is_code_fence_end(lines[i], code_marker):
                 in_code_block = False
+                code_marker = ""
 
             i += 1
             continue
 
-        if in_code_block:
+        marker = get_code_fence(lines[i])
+
+        if marker is not None:
+            in_code_block = True
+            code_marker = marker
+
             i += 1
             continue
 

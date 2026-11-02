@@ -3,7 +3,8 @@ from pathlib import Path
 from src.indexing.markdown_parser import (
     find_markdown_tables,
     is_table_separator,
-    is_code_fence,
+    get_code_fence,
+    is_code_fence_end,
 )
 
 
