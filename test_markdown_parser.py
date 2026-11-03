@@ -32,6 +32,26 @@ def main() -> None:
 | Luis | 30 |
 """
 
+    test_fence_content = """\
+````python
+| Nombre | Edad |
+| --- | --- |
+| Ana | 25 |
+```
+| Luis | 30 |
+````
+| Pedro | 40 |
+| --- | --- |
+| Marta | 35 |
+"""
+
+    fence_tables = find_markdown_tables(test_fence_content)
+
+    print(f"\nTablas con delimitadores: {len(fence_tables)}")
+
+    for start, end in fence_tables:
+        print(test_fence_content[start:end])
+
     test_tables = find_markdown_tables(test_content)
 
     print(f"\nTablas de prueba: {len(test_tables)}")
