@@ -26,3 +26,27 @@ def is_code_fence_end(line: str, marker: str) -> bool:
     pattern = rf"^\s*{re.escape(marker[0])}{{{len(marker)},}}\s*$"
 
     return bool(re.match(pattern, line))
+
+
+def get_heading_level(line: str) -> int | None:
+    """Return the heading level if the line is a Markdown heading."""
+
+    match = re.match(r"^ {0,3}(#{1,6})(?:[ \t]+|$)", line)
+
+    if match:
+        return len(match.group(1))
+
+    return None
+
+
+def get_line_offsets(lines: list[str]) -> list[int]:
+    """Return the starting character position of each line."""
+
+    offsets: list[int] = []
+    offset = 0
+
+    for line in lines:
+        offsets.append(offset)
+        offset += len(line)
+
+    return offsets

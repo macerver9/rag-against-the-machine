@@ -16,9 +16,9 @@ def main() -> None:
 
     print(f"Tablas encontradas: {len(tables)}")
 
-    for start, end in tables:
-        print(f"\nPosiciones: {start} - {end}")
-        print(content[start:end])
+    for table in tables:
+        print(f"\nPosiciones: {table.start} - {table.end}")
+        print(content[table.start:table.end])
 
     test_content = """
 ```text
@@ -49,15 +49,15 @@ def main() -> None:
 
     print(f"\nTablas con delimitadores: {len(fence_tables)}")
 
-    for start, end in fence_tables:
-        print(test_fence_content[start:end])
+    for table in fence_tables:
+        print(test_fence_content[table.start:table.end])
 
     test_tables = find_markdown_tables(test_content)
 
     print(f"\nTablas de prueba: {len(test_tables)}")
 
-    for start, end in test_tables:
-        print(test_content[start:end])
+    for table in test_tables:
+        print(test_content[table.start:table.end])
 
 
 if __name__ == "__main__":

@@ -2,21 +2,19 @@ from src.indexing.markdown_parser_utils import (
     get_code_fence,
     is_code_fence_end,
     is_table_separator,
+    get_line_offsets,
+    get_heading_level
 )
+from src.indexing.markdown_block import MarckdownBlock
 
 
-def find_markdown_tables(content: str) -> list[tuple[int, int]]:
+def find_markdown_tables(content: str) -> list[MarckdownBlock]:
     """Find Markdown tables and return their character positions."""
 
     lines = content.splitlines(keepends=True)
-    tables: list[tuple[int, int]] = []
+    tables: list[MarckdownBlock] = []
 
-    offset = 0
-    offsets: list[int] = []
-
-    for line in lines:
-        offsets.append(offset)
-        offset += len(line)
+    offsets = get_line_offsets(lines)
 
     i = 0
 
@@ -53,9 +51,61 @@ def find_markdown_tables(content: str) -> list[tuple[int, int]]:
                 i += 1
 
             end = offsets[i - 1] + len(lines[i - 1])
-            tables.append((start, end))
+            tables.append(
+                MarckdownBlock(
+                    type="table",
+                    start=start,
+                    end=end,
+                )
+            )
             continue
 
         i += 1
 
     return tables
+
+
+def find_markdown_headings(content: str) -> list[MarckdownBlock]:
+    """Find Markdown headings and return their character positions"""
+
+    lines = content.splitlines(keepends=True)
+    offsets = get_line_offsets(lines)
+
+    headings: list[MarckdownBlock] = []
+
+    in_code_block = False
+    code_marker = ""
+
+    for i, line in enumerate(lines):
+        if in_code_block:
+            if is_code_fence_end(line, code_marker):
+                in_code_block = False
+                code_marker = ""
+
+            continue
+
+        marker = get_code_fence(line)
+
+        if marker is not None:
+            in_code_block = True
+            code_marker = marker
+            continue
+
+        level = get_heading_level(line)
+
+        if level is None:
+            continue
+
+        start = offsets[i]
+        end = start + len(line)
+
+        headings.append(
+            MarckdownBlock(
+                type="heading",
+                start=start,
+                end=end,
+                level=level
+            )
+        )
+
+    return headings
