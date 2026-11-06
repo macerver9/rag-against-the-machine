@@ -1,18 +1,19 @@
+from src.indexing.markdown_block import MarkdownBlock
 from src.indexing.markdown_parser_utils import (
     get_code_fence,
     is_code_fence_end,
     is_table_separator,
     get_line_offsets,
-    get_heading_level
+    get_heading_level,
+    get_setext_heading_level
 )
-from src.indexing.markdown_block import MarckdownBlock
 
 
-def find_markdown_tables(content: str) -> list[MarckdownBlock]:
+def find_markdown_tables(content: str) -> list[MarkdownBlock]:
     """Find Markdown tables and return their character positions."""
 
     lines = content.splitlines(keepends=True)
-    tables: list[MarckdownBlock] = []
+    tables: list[MarkdownBlock] = []
 
     offsets = get_line_offsets(lines)
 
@@ -52,7 +53,7 @@ def find_markdown_tables(content: str) -> list[MarckdownBlock]:
 
             end = offsets[i - 1] + len(lines[i - 1])
             tables.append(
-                MarckdownBlock(
+                MarkdownBlock(
                     type="table",
                     start=start,
                     end=end,
@@ -65,23 +66,28 @@ def find_markdown_tables(content: str) -> list[MarckdownBlock]:
     return tables
 
 
-def find_markdown_headings(content: str) -> list[MarckdownBlock]:
+def find_markdown_headings(content: str) -> list[MarkdownBlock]:
     """Find Markdown headings and return their character positions"""
 
     lines = content.splitlines(keepends=True)
     offsets = get_line_offsets(lines)
 
-    headings: list[MarckdownBlock] = []
+    headings: list[MarkdownBlock] = []
 
     in_code_block = False
     code_marker = ""
 
-    for i, line in enumerate(lines):
+    i = 0
+
+    while i < len(lines):
+        line = lines[i]
+
         if in_code_block:
             if is_code_fence_end(line, code_marker):
                 in_code_block = False
                 code_marker = ""
 
+            i += 1
             continue
 
         marker = get_code_fence(line)
@@ -89,23 +95,48 @@ def find_markdown_headings(content: str) -> list[MarckdownBlock]:
         if marker is not None:
             in_code_block = True
             code_marker = marker
+            i += 1
             continue
 
         level = get_heading_level(line)
 
-        if level is None:
+        if level is not None:
+
+            start = offsets[i]
+            end = start + len(line)
+
+            headings.append(
+                MarkdownBlock(
+                    type="heading",
+                    start=start,
+                    end=end,
+                    level=level
+                )
+            )
+
+            i += 1
             continue
 
-        start = offsets[i]
-        end = start + len(line)
+        if i + 1 < len(lines):
+            next_line = lines[i + 1]
+            level = get_setext_heading_level(next_line)
 
-        headings.append(
-            MarckdownBlock(
-                type="heading",
-                start=start,
-                end=end,
-                level=level
-            )
-        )
+            if line.strip() and level is not None:
+                start = offsets[i]
+                end = offsets[i + 1] + len(next_line)
+
+                headings.append(
+                    MarkdownBlock(
+                        type="heading",
+                        start=start,
+                        end=end,
+                        level=level,
+                    )
+                )
+
+                i += 2
+                continue
+
+        i += 1
 
     return headings

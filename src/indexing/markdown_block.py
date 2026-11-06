@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 
 @dataclass
-class MarckdownBlock:
+class MarkdownBlock:
     """Represent a Marckdown block and its position in the document."""
 
     type: str

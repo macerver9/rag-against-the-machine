@@ -50,3 +50,14 @@ def get_line_offsets(lines: list[str]) -> list[int]:
         offset += len(line)
 
     return offsets
+
+
+def get_setext_heading_level(line: str) -> int | None:
+    """Return the heading level if the line is a Setext under line."""
+
+    match = re.match(r"^ {0,3}(=+|-+)[ \t]*$", line)
+
+    if match:
+        return 1 if "=" in match.group(1) else 2
+
+    return None

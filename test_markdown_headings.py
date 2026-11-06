@@ -1,3 +1,4 @@
+from pathlib import Path
 from src.indexing.markdown_parser import find_markdown_headings
 
 
@@ -56,6 +57,59 @@ def main():
         assert content[heading.start:heading.end].strip() == title
 
 
+def test_real_markdown_file() -> None:
+    file_path = Path(
+        "data/raw/vllm-0.10.1/docs/models/supported_models.md"
+    )
+    content = file_path.read_text(encoding="utf-8")
+
+    headings = find_markdown_headings(content)
+
+    print(f"Encabezados encontrados: {len(headings)}")
+
+    for heading in headings[:20]:
+        text = content[heading.start:heading.end].strip()
+        print(f"H{heading.level}: {text}")
+
+
+def test_setext_headings() -> None:
+    content = """\
+    Título principal
+    ================
+
+    Subtítulo
+    ---------
+
+    Texto normal
+
+    ----------------
+    """
+
+    headings = find_markdown_headings(content)
+
+    print(f"Encabezados encontrados: {len(headings)}")
+
+    for heading in headings:
+        print(
+            heading.level,
+            repr(content[heading.start:heading.end]),
+        )
+
+    assert len(headings) == 2
+
+    assert headings[0].level == 1
+    assert content[headings[0].start:headings[0].end] == (
+        "Título principal\n================\n"
+    )
+
+    assert headings[1].level == 2
+    assert content[headings[1].start:headings[1].end] == (
+        "Subtítulo\n---------\n"
+    )
+
+
 if __name__ == "__main__":
     test_markdown_headings()
     test_headings_ignore_code_blocks()
+    test_real_markdown_file()
+    test_setext_headings()
