@@ -1,4 +1,5 @@
 from pathlib import Path
+
 from src.indexing.markdown_parser import find_markdown_headings
 
 
@@ -9,15 +10,16 @@ def test_markdown_headings() -> None:
 
     assert len(headings) == 3
 
-    assert headings[0].type == "heading"
-    assert headings[0].level == 1
-    assert content[headings[0].start:headings[0].end] == "# Instalación\n"
+    expected = [
+        (1, "# Instalación\n"),
+        (2, "## Linux\n"),
+        (3, "### Ubuntu\n"),
+    ]
 
-    assert headings[1].level == 2
-    assert content[headings[1].start:headings[1].end] == "## Linux\n"
-
-    assert headings[2].level == 3
-    assert content[headings[2].start:headings[2].end] == "### Ubuntu\n"
+    for heading, (level, text) in zip(headings, expected):
+        assert heading.type == "heading"
+        assert heading.level == level
+        assert content[heading.start:heading.end] == text
 
 
 def test_headings_ignore_code_blocks() -> None:
@@ -43,15 +45,7 @@ def main():
 
     assert len(headings) == 3
 
-    assert headings[0].level == 1
-    assert headings[1].level == 2
-    assert headings[2].level == 3
-
-    expected = [
-        "# Instalación",
-        "## Linux",
-        "### Ubuntu",
-    ]
+    expected = ["# Instalación", "## Linux", "### Ubuntu"]
 
     for heading, title in zip(headings, expected):
         assert content[heading.start:heading.end].strip() == title
@@ -65,47 +59,34 @@ def test_real_markdown_file() -> None:
 
     headings = find_markdown_headings(content)
 
-    print(f"Encabezados encontrados: {len(headings)}")
-
-    for heading in headings[:20]:
-        text = content[heading.start:heading.end].strip()
-        print(f"H{heading.level}: {text}")
+    assert len(headings) == 30
 
 
 def test_setext_headings() -> None:
     content = """\
-    Título principal
-    ================
+Título principal
+================
 
-    Subtítulo
-    ---------
+Subtítulo
+---------
 
-    Texto normal
+Texto normal
 
-    ----------------
-    """
+----------------
+"""
 
     headings = find_markdown_headings(content)
 
-    print(f"Encabezados encontrados: {len(headings)}")
-
-    for heading in headings:
-        print(
-            heading.level,
-            repr(content[heading.start:heading.end]),
-        )
-
     assert len(headings) == 2
 
-    assert headings[0].level == 1
-    assert content[headings[0].start:headings[0].end] == (
-        "Título principal\n================\n"
-    )
+    expected = [
+        (1, "Título principal\n================\n"),
+        (2, "Subtítulo\n---------\n"),
+    ]
 
-    assert headings[1].level == 2
-    assert content[headings[1].start:headings[1].end] == (
-        "Subtítulo\n---------\n"
-    )
+    for heading, (level, text) in zip(headings, expected):
+        assert heading.level == level
+        assert content[heading.start:heading.end] == text
 
 
 if __name__ == "__main__":

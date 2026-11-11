@@ -1,4 +1,4 @@
-from src.indexing.markdown_block import MarkdownBlock
+from src.indexing.chunk import MarkdownBlock
 from src.indexing.markdown_parser_utils import (
     get_code_fence,
     is_code_fence_end,
@@ -140,3 +140,7 @@ def find_markdown_headings(content: str) -> list[MarkdownBlock]:
         i += 1
 
     return headings
+
+
+
+def find_markdown_paragraphs(content: str) -> list[MarkdownBlock]:

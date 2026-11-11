@@ -60,5 +60,21 @@ def main() -> None:
         print(test_content[table.start:table.end])
 
 
+def test_table_separated_by_code_block() -> None:
+    content = """\
+| Nombre | Edad |
+```text
+Esto separa las dos líneas.
+```
+| --- | --- |
+| Luis | 30 |
+"""
+
+    result = find_markdown_tables(content)
+
+    assert result == []
+
+
 if __name__ == "__main__":
     main()
+    test_table_separated_by_code_block()
