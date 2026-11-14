@@ -1,13 +1,4 @@
 import re
-from collections.abc import Iterator
-
-
-def is_table_separator(line: str) -> bool:
-    """Check whether a line is a Markdown table separator."""
-
-    pattern = r"^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$"
-
-    return bool(re.match(pattern, line))
 
 
 def get_code_fence(line: str) -> str | None:
