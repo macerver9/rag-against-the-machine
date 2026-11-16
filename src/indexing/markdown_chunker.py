@@ -1,29 +1,18 @@
 import re
+from src.indexing.chunk import Chunk
 
 
-def split_markdown_sections(content: str) -> list[str]:
-    """Split Markdown content into sections using headings."""
+def update_heading_context(
+    headings: list[tuple[int, str]],
+    level: int,
+    heading: str,
+) -> None:
+    """Update the heading hierarchy with a new heading."""
 
-    matches = re.finditer(r"^#{1,6}\s", content, re.MULTILINE)
-    positions = [match.start() for match in matches]
+    while headings and headings[-1][0] >= level:
+        headings.pop()
 
-    if not positions:
-        return [content] if content else []
-
-    sections: list[str] = []
-
-    if positions[0] > 0:
-        sections.append(content[:positions[0]])
-
-    for i, start in enumerate(positions):
-        if i + 1 < len(positions):
-            end = positions[i + 1]
-        else:
-            end = len(content)
-
-        sections.append(content[start:end])
-
-    return sections
+    headings.append((level, heading))
 
 
 def split_long_paragraph(para: str, char_limit: int) -> list[str]:
@@ -104,7 +93,7 @@ def split_section_into_chunks(
     return chunks
 
 
-def chunk_markdown(content: str, char_limit: int = 2000) -> list[str]:
+def chunk_markdown(content: str, file_path: str, char_limit: int = 2000) -> list[Chunk]:
     """Split Markdown content into chunks."""
 
     sections: list[str] = split_markdown_sections(content)
