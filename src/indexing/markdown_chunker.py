@@ -1,5 +1,5 @@
-import re
 from src.indexing.chunk import Chunk
+from src.indexing.markdown_parser import parse_markdown
 
 
 def update_heading_context(
@@ -15,92 +15,46 @@ def update_heading_context(
     headings.append((level, heading))
 
 
-def split_long_paragraph(para: str, char_limit: int) -> list[str]:
-    """Split a long paragraph into a sections with a max limit of characters"""
+def find_split_position(
+        text: str,
+        start: int,
+        char_limit: int,
+) -> int:
+    """FInd the best position to split a text block."""
 
-    chunks: list[str] = []
-    start = 0
+    end = min(start + char_limit, len(text))
 
-    while start < len(para):
-        end = min(start + char_limit, len(para))
+    if end == len(text):
+        return end
 
-        if end < len(para):
-            space = para.rfind(" ", start, end)
+    separators = ["\n\n", "\n", " "]
 
-            if space > start:
-                end = space
+    for separator in separators:
+        position = text.rfind(separator, start, end)
 
-        chunks.append(para[start:end])
-        start = end
+        if position > start:
+            return position + len(separator)
 
-    return chunks
+    return end
 
 
-def split_section_into_chunks(
-    content: str,
-    char_limit: int = 2000,
-) -> list[str]:
-    """Split a section into chunks with a maximum character limit."""
+def chunk_markdown(
+        content: str,
+        file_path: str,
+        char_limit: int = 2000
+) -> list[Chunk]:
+    """Split Markdown content into searchable chunks."""
 
-    chunks: list[str] = []
-    paragraphs = re.finditer(r"\n\n+", content)
-    start = 0
-    current_chunk = ""
+    blocks = parse_markdown(content)
+    headings: list[tuple[int, str]] = []
+    chunks: list[Chunk] = []
 
-    for match in paragraphs:
-        end = match.start()
-        separator_end = match.end()
-        paragraph = content[start:end]
-        separator = content[end:separator_end]
-
-        if len(current_chunk) + len(paragraph) + len(separator) <= char_limit:
-            current_chunk += paragraph + separator
-
-        else:
-            if current_chunk:
-                chunks.append(current_chunk)
-                current_chunk = ""
-
-            if len(paragraph) > char_limit:
-                chunks.extend(split_long_paragraph(paragraph, char_limit))
-            else:
-                current_chunk = paragraph
-
-            if len(current_chunk) + len(separator) <= char_limit:
-                current_chunk += separator
-            else:
-                chunks.append(current_chunk)
-                current_chunk = separator
-
-        start = separator_end
-
-    remaining = content[start:]
-
-    if len(current_chunk) + len(remaining) <= char_limit:
-        current_chunk += remaining
-    else:
-        if current_chunk:
-            chunks.append(current_chunk)
-
-        if len(remaining) > char_limit:
-            chunks.extend(split_long_paragraph(remaining, char_limit))
-        else:
-            current_chunk = remaining
-
-    if current_chunk:
-        chunks.append(current_chunk)
+    for block in blocks:
+        if block.type == "heading" and block.level is not None:
+            update_heading_context(headings,
+                                   block.level,
+                                   content[block.start:block.end])
 
     return chunks
 
-
-def chunk_markdown(content: str, file_path: str, char_limit: int = 2000) -> list[Chunk]:
-    """Split Markdown content into chunks."""
-
-    sections: list[str] = split_markdown_sections(content)
-    chunks: list[str] = []
-
-    for section in sections:
-        section_chunks = split_section_into_chunks(section, char_limit)
-        chunks.extend(section_chunks)
-
-    return chunks
+    
