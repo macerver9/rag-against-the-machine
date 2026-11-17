@@ -1,4 +1,4 @@
-from src.indexing.markdown_chunker import find_split_position
+from src.indexing.markdown_chunker import find_split_position, split_long_block
 
 
 if __name__ == "__main__":
@@ -22,7 +22,7 @@ linea = "hola como estas"
 
 sin_sep = "asdasgasdfafasdggasdgasdgasdfasdgsagsdfasdfasfa"
 
-print(find_split_position(parrafos, 0, 20))
-print(find_split_position(sin_parr, 0, 20))
-print(find_split_position(linea, 0, 20))
-print(find_split_position(linea, 0, 10))
+print(split_long_block("Hola mundo", 5))
+print(split_long_block("abcdefghijklmnopqrst", 10))
+print(split_long_block("Hola\n\nqué tal\n\namigo", 10))
+print(split_long_block("Hola\n\nqué tal\n\namigo", 5))

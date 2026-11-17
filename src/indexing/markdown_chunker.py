@@ -38,6 +38,31 @@ def find_split_position(
     return end
 
 
+def split_long_block(
+        text: str,
+        char_limit: int,
+) -> list[str]:
+    """Returns chunks thats match the size limit"""
+    parts: list[str] = []
+    start = 0
+
+    while start < len(text):
+        end = find_split_position(text, start, char_limit)
+
+        if end == start:
+            break
+
+        if end > start:
+            parts.append(text[start:end])
+
+        start = end
+
+    assert "".join(parts) == text
+    assert all(len(part) <= char_limit for part in parts)
+
+    return parts
+
+
 def chunk_markdown(
         content: str,
         file_path: str,
