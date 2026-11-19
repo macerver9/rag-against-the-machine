@@ -41,9 +41,10 @@ def find_split_position(
 def split_long_block(
         text: str,
         char_limit: int,
-) -> list[str]:
+) -> list[tuple[int, int]]:
     """Returns chunks thats match the size limit"""
-    parts: list[str] = []
+
+    parts: list[tuple[int, int]] = []
     start = 0
 
     while start < len(text):
@@ -53,12 +54,14 @@ def split_long_block(
             break
 
         if end > start:
-            parts.append(text[start:end])
+            parts.append((start, end))
 
         start = end
 
-    assert "".join(parts) == text
-    assert all(len(part) <= char_limit for part in parts)
+    assert "".join(text[part_start:part_end]
+                   for part_start, part_end in parts) == text
+    assert all(part_end - part_start <= char_limit
+               for part_start, part_end in parts)
 
     return parts
 
@@ -74,11 +77,87 @@ def chunk_markdown(
     headings: list[tuple[int, str]] = []
     chunks: list[Chunk] = []
 
+    current_end = 0
+    current_start = 0
+
     for block in blocks:
         if block.type == "heading" and block.level is not None:
             update_heading_context(headings,
                                    block.level,
                                    content[block.start:block.end])
+
+        block_size = block.end - block.start
+
+        if block_size > char_limit:
+            if current_end > current_start:
+                chunk_text = content[current_start:current_end]
+
+                chunks.append(
+                    Chunk(
+                        file_path=file_path,
+                        start=current_start,
+                        end=current_end,
+                        text=chunk_text,
+                        search_text=chunk_text,
+                    )
+                )
+            parts = split_long_block(
+                content[block.start:block.end],
+                char_limit
+            )
+
+            for part_start, part_end in parts:
+                absolute_start = block.start + part_start
+                absolute_end = block.start + part_end
+
+                chunk_text = content[absolute_start:absolute_end]
+
+                chunks.append(
+                    Chunk(
+                        file_path=file_path,
+                        start=absolute_start,
+                        end=absolute_end,
+                        text=chunk_text,
+                        search_text=chunk_text,
+                    )
+                )
+            current_start = block.end
+            current_end = block.end
+            continue
+
+        new_size = block.end - current_start
+
+        if new_size <= char_limit:
+            current_end = block.end
+
+        else:
+            if current_end > current_start:
+                chunk_text = content[current_start:current_end]
+
+                chunks.append(
+                    Chunk(
+                        file_path=file_path,
+                        start=current_start,
+                        end=current_end,
+                        text=chunk_text,
+                        search_text=chunk_text,
+                    )
+                )
+            current_start = block.start
+            current_end = block.end
+
+    if current_end > current_start:
+        chunk_text = content[current_start:current_end]
+
+        chunks.append(
+            Chunk(
+                file_path=file_path,
+                start=current_start,
+                end=current_end,
+                text=chunk_text,
+                search_text=chunk_text,
+            )
+        )
 
     return chunks
 
