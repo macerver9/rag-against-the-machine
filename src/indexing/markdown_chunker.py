@@ -15,55 +15,92 @@ def update_heading_context(
     headings.append((level, heading))
 
 
-def find_split_position(
+def find_cut_position(
         text: str,
         start: int,
         char_limit: int,
 ) -> int:
-    """FInd the best position to split a text block."""
+    """Find the best cut position within the caracter limit."""
 
-    end = min(start + char_limit, len(text))
+    max_end = min(start + char_limit, len(text))
 
-    if end == len(text):
-        return end
+    if max_end == len(text):
+        return max_end
 
     separators = ["\n\n", "\n", " "]
 
     for separator in separators:
-        position = text.rfind(separator, start, end)
+        position = text.rfind(
+            separator,
+            start,
+            max_end - len(separator) + 1
+        )
 
         if position > start:
             return position + len(separator)
 
-    return end
+    return max_end
 
 
-def split_long_block(
-        text: str,
-        char_limit: int,
-) -> list[tuple[int, int]]:
-    """Returns chunks thats match the size limit"""
+def build_search_text(
+    headings: list[tuple[int, str]],
+    text: str,
+) -> str:
+    """Add heading context to the chunk text."""
+    context: list[str] = []
 
-    parts: list[tuple[int, int]] = []
-    start = 0
+    for level, heading in headings:
+        title = heading.splitlines()[0].strip()
+        title = title.lstrip("#").strip()
+        context.append(f"{'#' * level} {title}")
 
-    while start < len(text):
-        end = find_split_position(text, start, char_limit)
+    if not context:
+        return text
 
-        if end == start:
-            break
+    return "\n".join(context) + "\n\n" + text
 
-        if end > start:
-            parts.append((start, end))
 
-        start = end
+def chunk_region(
+    content: str,
+    file_path: str,
+    start: int,
+    end: int,
+    char_limit: int,
+    headings: list[tuple[int, str]],
+) -> list[Chunk]:
+    """Split a text region into chunks."""
+    region_text = content[start:end]
+    chunks: list[Chunk] = []
+    cursor = 0
 
-    assert "".join(text[part_start:part_end]
-                   for part_start, part_end in parts) == text
-    assert all(part_end - part_start <= char_limit
-               for part_start, part_end in parts)
+    while cursor < len(region_text):
+        cut = find_cut_position(
+            region_text,
+            cursor,
+            char_limit,
+        )
 
-    return parts
+        chunk_text = region_text[cursor:cut]
+
+        absolute_start = start + cursor
+        absolute_end = start + cut
+
+        chunks.append(
+            Chunk(
+                file_path=file_path,
+                start=absolute_start,
+                end=absolute_end,
+                text=chunk_text,
+                search_text=build_search_text(
+                    headings,
+                    chunk_text,
+                ),
+            )
+        )
+
+        cursor = cut
+
+    return chunks
 
 
 def chunk_markdown(
@@ -74,6 +111,7 @@ def chunk_markdown(
     """Split Markdown content into searchable chunks."""
 
     blocks = parse_markdown(content)
+
     headings: list[tuple[int, str]] = []
     chunks: list[Chunk] = []
 
@@ -160,5 +198,3 @@ def chunk_markdown(
         )
 
     return chunks
-
-    

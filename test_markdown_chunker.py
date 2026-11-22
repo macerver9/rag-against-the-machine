@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from src.indexing.markdown_chunker import chunk_markdown
+from src.indexing.markdown_chunker import chunk_markdown, parse_markdown
 
 
 def main() -> None:
@@ -19,6 +19,16 @@ def main() -> None:
         str(file_path),
         char_limit=500,
     )
+    blocks = parse_markdown(content)
+
+    for block in blocks:
+        print(
+            f"type={block.type}, "
+            f"start={block.start}, "
+            f"end={block.end}, "
+            f"size={block.end - block.start}, "
+            f"text={content[block.start:block.end]!r}"
+        )
 
     print(f"File: {file_path}")
     print(f"Original size: {len(content)} characters")
