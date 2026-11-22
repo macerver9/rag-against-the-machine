@@ -90,13 +90,12 @@ def parse_markdown(content: str) -> list[MarkdownBlock]:
 
         end = offsets[i] if i < len(lines) else len(content)
 
-        if content[offsets[start]:end].strip():
-            blocks.append(
-                MarkdownBlock(
-                    type="content",
-                    start=offsets[start],
-                    end=end,
-                )
+        blocks.append(
+            MarkdownBlock(
+                type="content",
+                start=offsets[start],
+                end=end,
             )
+        )
 
     return blocks
