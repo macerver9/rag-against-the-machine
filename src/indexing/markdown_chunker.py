@@ -66,18 +66,14 @@ def chunk_markdown(
     char_limit: int = 2000,
 ) -> list[Chunk]:
     """Split Markdown content into searchable chunks."""
-
     blocks = parse_markdown(content)
     headings: list[tuple[int, str]] = []
     chunks: list[Chunk] = []
 
     current_start = 0
     current_end = 0
-    current_text = ""
 
-    for i, block in enumerate(blocks):
-        next_block = blocks[i + 1] if i + 1 < len(blocks) else None
-
+    for block in blocks:
         if block.type == "heading" and block.level is not None:
             update_heading_context(
                 headings,
@@ -85,26 +81,51 @@ def chunk_markdown(
                 content[block.start:block.end],
             )
 
-            heading_text = content[block.start:block.end]
+        cursor = block.start
 
-            content_block = None
-            content_index = None
+        while cursor < block.end:
+            current_size = current_end - current_start
+            available = char_limit - current_size
 
-            for j in range(i + 1, len(blocks)):
-                following_block = blocks[j]
+            if available <= 0:
+                chunk_text = content[current_start:current_end]
 
-                if following_block.type == "heading":
-                    break
+                chunks.append(
+                    Chunk(
+                        file_path=file_path,
+                        start=current_start,
+                        end=current_end,
+                        text=chunk_text,
+                        search_text=build_search_text(headings, chunk_text),
+                    )
+                )
 
-                if content[following_block.start:following_block.end].strip():
-                    content_block = following_block
-                    content_index = j
-                    break
+                current_start = current_end
+                available = char_limit
 
-            if content_block is not None:
-                candidate = content[block.start:content_block.end]
+            block_text = content[block.start:block.end]
+            relative_cursor = cursor - block.start
 
-                if len(current_text) + len(candidate) <= char_limit:
-                    current_text += candidate
+            cut = find_cut_position(
+                block_text,
+                relative_cursor,
+                available,
+            )
+
+            current_end = block.start + cut
+            cursor = current_end
+
+    if current_end > current_start:
+        chunk_text = content[current_start:current_end]
+
+        chunks.append(
+            Chunk(
+                file_path=file_path,
+                start=current_start,
+                end=current_end,
+                text=chunk_text,
+                search_text=build_search_text(headings, chunk_text),
+            )
+        )
 
     return chunks
