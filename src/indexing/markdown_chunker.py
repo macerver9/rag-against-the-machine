@@ -73,14 +73,38 @@ def chunk_markdown(
 
     current_start = 0
     current_end = 0
+    current_text = ""
 
     for i, block in enumerate(blocks):
         next_block = blocks[i + 1] if i + 1 < len(blocks) else None
+
         if block.type == "heading" and block.level is not None:
             update_heading_context(
                 headings,
                 block.level,
                 content[block.start:block.end],
             )
+
+            heading_text = content[block.start:block.end]
+
+            content_block = None
+            content_index = None
+
+            for j in range(i + 1, len(blocks)):
+                following_block = blocks[j]
+
+                if following_block.type == "heading":
+                    break
+
+                if content[following_block.start:following_block.end].strip():
+                    content_block = following_block
+                    content_index = j
+                    break
+
+            if content_block is not None:
+                candidate = content[block.start:content_block.end]
+
+                if len(current_text) + len(candidate) <= char_limit:
+                    current_text += candidate
 
     return chunks
