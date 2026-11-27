@@ -1,4 +1,7 @@
 from src.indexing.markdown_chunker import chunk_markdown
+from pathlib import Path
+
+from src.indexing.markdown_chunker import chunk_markdown
 
 
 def print_chunks(chunks: list) -> None:
@@ -76,23 +79,20 @@ def test_heading_context() -> None:
 
 
 if __name__ == "__main__":
-    content = (
-        "# RAG Project\n\n"
-        "This is the introduction to the project.\n\n"
-        "## Architecture\n\n"
-        "The project uses a modular architecture.\n"
-        "Each module has a specific responsibility.\n\n"
-        "### Chunking\n\n"
-        "Markdown content is split into smaller chunks.\n"
-        "Each chunk contains contextual information.\n\n"
-        "## Search\n\n"
-        "Search uses the contextual text to improve retrieval."
+    file_path = Path(
+        "data/raw/vllm-0.10.1/docs/design/arch_overview.md"
     )
+
+    content = file_path.read_text(encoding="utf-8")
 
     chunks = chunk_markdown(
         content,
-        "README.md",
-        char_limit=100,
+        str(file_path),
+        char_limit=2000,
     )
 
+    print(f"File size: {len(content)} characters")
+    print(f"Total chunks: {len(chunks)}")
+
     print_chunks(chunks)
+    

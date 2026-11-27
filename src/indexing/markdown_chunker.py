@@ -1,4 +1,4 @@
-from src.indexing.chunk import Chunk, MarkdownBlock
+from src.indexing.chunk import Chunk
 from src.indexing.markdown_parser import parse_markdown
 
 
@@ -8,7 +8,6 @@ def update_heading_context(
     heading: str,
 ) -> None:
     """Update the heading hierarchy with a new heading."""
-
     while headings and headings[-1][0] >= level:
         headings.pop()
 
@@ -16,12 +15,11 @@ def update_heading_context(
 
 
 def find_cut_position(
-        text: str,
-        start: int,
-        char_limit: int,
+    text: str,
+    start: int,
+    char_limit: int,
 ) -> int:
-    """Find the best cut position within the caracter limit."""
-
+    """Find the best cut position within the character limit."""
     max_end = min(start + char_limit, len(text))
 
     if max_end == len(text):
@@ -30,16 +28,54 @@ def find_cut_position(
     separators = ["\n\n", "\n", " "]
 
     for separator in separators:
-        position = text.rfind(
-            separator,
-            start,
-            max_end - len(separator) + 1
-        )
+        position = text.rfind(separator, start, max_end)
 
-        if position > start:
-            return position + len(separator)
+        if position != -1:
+            cut = position + len(separator)
+
+            if cut <= max_end:
+                return cut
 
     return max_end
+
+
+def merge_chunks(
+    chunks: list[Chunk],
+    char_limit: int,
+) -> list[Chunk]:
+    """Merge consecutive small chunks when possible."""
+    merged: list[Chunk] = []
+
+    for chunk in chunks:
+        if not merged:
+            merged.append(chunk)
+            continue
+
+        previous = merged[-1]
+
+        combined_size = len(previous.text) + len(chunk.text)
+
+        is_small = (
+            len(previous.text) < char_limit // 2
+            or len(chunk.text) < char_limit // 2
+        )
+
+        if (
+            is_small
+            and combined_size <= char_limit
+            and previous.end == chunk.start
+        ):
+            merged[-1] = Chunk(
+                file_path=previous.file_path,
+                start=previous.start,
+                end=chunk.end,
+                text=previous.text + chunk.text,
+                search_text=previous.search_text + chunk.text,
+            )
+        else:
+            merged.append(chunk)
+
+    return merged
 
 
 def build_search_text(
@@ -60,6 +96,46 @@ def build_search_text(
     return "\n".join(context) + "\n\n" + text
 
 
+def create_chunk(
+    content: str,
+    file_path: str,
+    start: int,
+    end: int,
+    headings: list[tuple[int, str]],
+) -> Chunk:
+    """Create a chunk from a content range."""
+    text = content[start:end]
+
+    return Chunk(
+        file_path=file_path,
+        start=start,
+        end=end,
+        text=text,
+        search_text=build_search_text(headings, text),
+    )
+
+
+def get_headings_at_position(
+    blocks: list,
+    position: int,
+) -> list[tuple[int, str]]:
+    """Get the heading context at a document position."""
+    headings: list[tuple[int, str]] = []
+
+    for block in blocks:
+        if block.start >= position:
+            break
+
+        if block.type == "heading" and block.level is not None:
+            update_heading_context(
+                headings,
+                block.level,
+                block.text,
+            )
+
+    return headings
+
+
 def chunk_markdown(
     content: str,
     file_path: str,
@@ -67,65 +143,32 @@ def chunk_markdown(
 ) -> list[Chunk]:
     """Split Markdown content into searchable chunks."""
     blocks = parse_markdown(content)
-    headings: list[tuple[int, str]] = []
+
     chunks: list[Chunk] = []
-
     current_start = 0
-    current_end = 0
 
-    for block in blocks:
-        if block.type == "heading" and block.level is not None:
-            update_heading_context(
-                headings,
-                block.level,
-                content[block.start:block.end],
-            )
+    while current_start < len(content):
+        current_end = find_cut_position(
+            content,
+            current_start,
+            char_limit,
+        )
 
-        cursor = block.start
-
-        while cursor < block.end:
-            current_size = current_end - current_start
-            available = char_limit - current_size
-
-            if available <= 0:
-                chunk_text = content[current_start:current_end]
-
-                chunks.append(
-                    Chunk(
-                        file_path=file_path,
-                        start=current_start,
-                        end=current_end,
-                        text=chunk_text,
-                        search_text=build_search_text(headings, chunk_text),
-                    )
-                )
-
-                current_start = current_end
-                available = char_limit
-
-            block_text = content[block.start:block.end]
-            relative_cursor = cursor - block.start
-
-            cut = find_cut_position(
-                block_text,
-                relative_cursor,
-                available,
-            )
-
-            current_end = block.start + cut
-            cursor = current_end
-
-    if current_end > current_start:
-        chunk_text = content[current_start:current_end]
+        headings = get_headings_at_position(
+            blocks,
+            current_start,
+        )
 
         chunks.append(
-            Chunk(
-                file_path=file_path,
-                start=current_start,
-                end=current_end,
-                text=chunk_text,
-                search_text=build_search_text(headings, chunk_text),
+            create_chunk(
+                content,
+                file_path,
+                current_start,
+                current_end,
+                headings,
             )
         )
 
-    return chunks
+        current_start = current_end
+
+    return merge_chunks(chunks, char_limit)
