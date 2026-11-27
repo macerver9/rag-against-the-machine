@@ -9,7 +9,6 @@ class Chunk:
     start: int
     end: int
     text: str
-    search_text: str
 
     def __post_init__(self) -> None:
         if self.start < 0 or self.end <= self.start:
